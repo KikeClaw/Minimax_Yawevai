@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { 
   Zap, 
   Globe, 
@@ -34,11 +35,16 @@ interface GenerationState {
 }
 
 export default function HomePage() {
+  const router = useRouter()
   const [googleUrl, setGoogleUrl] = useState('')
   const [context, setContext] = useState('')
   const [generationState, setGenerationState] = useState<GenerationState>({ status: 'idle' })
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  const handleDashboardClick = () => {
+    router.push('/dashboard')
+  }
 
   const handleGenerate = async () => {
     if (!context.trim() && !googleUrl.trim()) {
@@ -129,7 +135,7 @@ export default function HomePage() {
               <a href="#como-funciona" className="text-gray-600 hover:text-gray-900 transition">Cómo Funciona</a>
               <a href="#secciones" className="text-gray-600 hover:text-gray-900 transition">Secciones</a>
               <a href="#precios" className="text-gray-600 hover:text-gray-900 transition">Precios</a>
-              <button className="btn btn-secondary text-sm">Iniciar Sesión</button>
+              <button onClick={handleDashboardClick} className="btn btn-secondary text-sm">Iniciar Sesión</button>
             </div>
 
             {/* Mobile menu button */}
