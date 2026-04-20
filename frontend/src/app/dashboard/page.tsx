@@ -79,6 +79,9 @@ interface AIModel {
   name: string;
   description: string;
   supports_vision: boolean;
+  cost_per_generation_usd: number;
+  input_cost_per_1m_tokens: number;
+  output_cost_per_1m_tokens: number;
 }
 
 interface AIProvider {
@@ -1217,51 +1220,66 @@ const AISettingsSection = () => {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Proveedor</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Modelo</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Mejor Para</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Coste</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Coste/Web</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Coste Total</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Calidad</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              <tr className="hover:bg-gray-50">
-                <td className="px-4 py-3"><span className="font-medium">OpenAI</span></td>
-                <td className="px-4 py-3">GPT-4o</td>
-                <td className="px-4 py-3 text-sm text-gray-600">Mejor calidad general, rápido</td>
-                <td className="px-4 py-3"><span className="text-orange-600">$$$</span></td>
-                <td className="px-4 py-3"><span className="text-green-600">★★★★★</span></td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="px-4 py-3"><span className="font-medium">Anthropic</span></td>
-                <td className="px-4 py-3">Claude 3.5 Sonnet</td>
-                <td className="px-4 py-3 text-sm text-gray-600">Mejor razonamiento, excelente escritura</td>
-                <td className="px-4 py-3"><span className="text-orange-600">$$</span></td>
-                <td className="px-4 py-3"><span className="text-green-600">★★★★★</span></td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="px-4 py-3"><span className="font-medium">Google</span></td>
-                <td className="px-4 py-3">Gemini 1.5 Pro</td>
-                <td className="px-4 py-3 text-sm text-gray-600">Contexto largo, multimodal</td>
-                <td className="px-4 py-3"><span className="text-green-600">$</span></td>
-                <td className="px-4 py-3"><span className="text-green-600">★★★★</span></td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="px-4 py-3"><span className="font-medium">MiniMax</span></td>
-                <td className="px-4 py-3">ABAB 6.5S</td>
-                <td className="px-4 py-3 text-sm text-gray-600">Rápido, optimizado chino</td>
-                <td className="px-4 py-3"><span className="text-green-600">$</span></td>
-                <td className="px-4 py-3"><span className="text-yellow-600">★★★</span></td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="px-4 py-3"><span className="font-medium">Mock</span></td>
-                <td className="px-4 py-3">Template</td>
-                <td className="px-4 py-3 text-sm text-gray-600">Sin coste, calidad básica</td>
-                <td className="px-4 py-3"><span className="text-green-600">Gratis</span></td>
-                <td className="px-4 py-3"><span className="text-gray-400">★★</span></td>
-              </tr>
+              {currentModels.map((model) => (
+                <tr key={model.id} className={`hover:bg-gray-50 ${selectedModel === model.id ? 'bg-blue-50' : ''}`}>
+                  <td className="px-4 py-3"><span className="font-medium">{currentProvider?.name}</span></td>
+                  <td className="px-4 py-3">{model.name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{model.description}</td>
+                  <td className="px-4 py-3">
+                    <span className={`font-semibold ${model.cost_per_generation_usd === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                      {model.cost_per_generation_usd === 0 ? 'Gratis' : `$${model.cost_per_generation_usd.toFixed(4)}`}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    ${model.input_cost_per_1m_tokens.toFixed(2)} / ${model.output_cost_per_1m_tokens.toFixed(2)} per 1M
+                  </td>
+                  <td className="px-4 py-3">
+                    {model.id.includes('4o') || model.id.includes('sonnet') ? (
+                      <span className="text-green-600">★★★★★</span>
+                    ) : model.id.includes('haiku') || model.id.includes('flash') ? (
+                      <span className="text-yellow-600">★★★</span>
+                    ) : (
+                      <span className="text-green-600">★★★★</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+        
+        {/* Cost Calculator */}
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <h4 className="font-medium mb-3">Calculadora de Costos Estimados</h4>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm text-gray-600">Webs/mes</label>
+              <select className="w-full mt-1 px-3 py-2 border rounded-lg">
+                <option value="10">10 webs</option>
+                <option value="50">50 webs</option>
+                <option value="100">100 webs</option>
+                <option value="500">500 webs</option>
+              </select>
+            </div>
+            {currentModels.slice(0, 3).map((model) => (
+              <div key={model.id} className="text-center p-3 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">{model.name}</p>
+                <p className={`text-xl font-bold ${model.cost_per_generation_usd === 0 ? 'text-green-600' : 'text-blue-600'}`}>
+                  {model.cost_per_generation_usd === 0 ? 'Gratis' : `$${(model.cost_per_generation_usd * 100).toFixed(2)}/mes`}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        
         <p className="text-sm text-gray-500 mt-4">
-          <strong>Recomendación:</strong> Para mejores resultados profesionales, usa <strong>Claude 3.5 Sonnet</strong> (mejor relación calidad/precio) o <strong>GPT-4o</strong> (mejor calidad general).
+          <strong>Recomendación:</strong> Para mejores resultados profesionales, usa <strong>Claude 3.5 Sonnet</strong> (mejor relación calidad/precio ~$0.036/web) o <strong>GPT-4o</strong> (mejor calidad general ~$0.025/web). Gemini Flash es el más económico (~$0.00075/web).
         </p>
       </div>
     </div>

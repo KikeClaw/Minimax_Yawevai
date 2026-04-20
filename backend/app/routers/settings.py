@@ -126,6 +126,9 @@ async def get_providers() -> List[Dict[str, Any]]:
                     "name": m.name,
                     "description": m.description,
                     "supports_vision": m.supports_vision,
+                    "cost_per_generation_usd": m.cost_per_generation_usd,
+                    "input_cost_per_1m_tokens": m.input_cost_per_1m_tokens,
+                    "output_cost_per_1m_tokens": m.output_cost_per_1m_tokens,
                 }
                 for m in models
             ],

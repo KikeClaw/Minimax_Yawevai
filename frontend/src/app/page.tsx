@@ -17,7 +17,9 @@ import {
   X,
   FileText,
   Users,
-  TrendingUp
+  TrendingUp,
+  Sun,
+  Moon
 } from 'lucide-react'
 
 // API configuration
@@ -36,6 +38,7 @@ export default function HomePage() {
   const [context, setContext] = useState('')
   const [generationState, setGenerationState] = useState<GenerationState>({ status: 'idle' })
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   const handleGenerate = async () => {
     if (!context.trim() && !googleUrl.trim()) {
@@ -66,7 +69,8 @@ export default function HomePage() {
         body: JSON.stringify({
           google_url: googleUrl || null,
           context: context || 'Negocio local en España',
-          plan: 'basic'
+          plan: 'basic',
+          theme: theme
         })
       })
 
@@ -202,6 +206,41 @@ export default function HomePage() {
                 />
                 <div className="text-right text-sm text-gray-400 mt-1">
                   {context.length} / 2000 caracteres
+                </div>
+              </div>
+
+              {/* Theme Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
+                  Tema visual
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    disabled={isLoading}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${
+                      theme === 'light'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <Sun className="w-5 h-5" />
+                    <span className="font-medium">Claro</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    disabled={isLoading}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all ${
+                      theme === 'dark'
+                        ? 'border-blue-500 bg-blue-900 text-blue-200'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <Moon className="w-5 h-5" />
+                    <span className="font-medium">Oscuro</span>
+                  </button>
                 </div>
               </div>
 
