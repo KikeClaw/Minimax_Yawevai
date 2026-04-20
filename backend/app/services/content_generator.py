@@ -272,6 +272,20 @@ def generate_mock_content(google_data: Optional[GoogleBusinessData], context: st
         if "tiktok" in context.lower():
             social_links["tiktok"] = "https://tiktok.com/@"
     
+    # Generate testimonials from reviews (filter >= 4 stars)
+    testimonials = []
+    if google_data and google_data.reviews:
+        filtered_reviews = _filter_reviews(google_data.reviews, min_rating=4)
+        testimonials = [
+            {
+                "name": r.get("author", "Cliente"),
+                "rating": r.get("rating", 5),
+                "text": _smart_truncate(r.get("text", ""), max_length=200),
+                "date": r.get("date", "")
+            }
+            for r in filtered_reviews
+        ]
+    
     return GeneratedContent(
         title=title,
         subtitle=subtitle,
@@ -284,7 +298,8 @@ def generate_mock_content(google_data: Optional[GoogleBusinessData], context: st
         seo_description=seo_description,
         social_links=social_links,
         menu_pdf_url=None,
-        is_restaurant_bar=is_restaurant
+        is_restaurant_bar=is_restaurant,
+        testimonials=testimonials
     )
 
 

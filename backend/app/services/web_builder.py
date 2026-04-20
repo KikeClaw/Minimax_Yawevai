@@ -29,6 +29,7 @@ class WebBuilderService:
         items = [
             '<a href="#quienes-somos">QUIENES SOMOS</a>',
             '<a href="#servicios">SERVICIOS</a>',
+            '<a href="#testimonios">TESTIMONIOS</a>',
             '<a href="#donde-estamos">DONDE ESTAMOS</a>',
             '<a href="#horarios">HORARIOS</a>',
             '<a href="#galeria">GALERÍA</a>',
@@ -107,6 +108,34 @@ class WebBuilderService:
     </section>
         '''
     
+    def _get_testimonials_section(self, testimonials: list) -> str:
+        """Generate testimonials section HTML from filtered reviews"""
+        if not testimonials:
+            return ""
+        
+        testimonials_html = ""
+        for t in testimonials:
+            stars = "★" * int(t.get("rating", 5)) + "☆" * (5 - int(t.get("rating", 5)))
+            testimonials_html += f'''
+                <div class="testimonial-card">
+                    <div class="testimonial-rating">{stars}</div>
+                    <p class="testimonial-text">"{t.get('text', '')}"</p>
+                    <div class="testimonial-author">{t.get('name', 'Cliente')}</div>
+                    <div class="testimonial-date">{t.get('date', '')}</div>
+                </div>
+            '''
+        
+        return f'''
+    <!-- TESTIMONIOS -->
+    <section class="testimonials-section">
+        <h2 style="text-align: center; font-size: 2rem; margin-bottom: 0.5rem;">Lo que dicen nuestros clientes</h2>
+        <p style="text-align: center; color: var(--text-light); margin-bottom: 3rem;">Valoración de {len(testimonials)} estrellas</p>
+        <div class="testimonials-grid">
+            {testimonials_html}
+        </div>
+    </section>
+        '''
+    
     def _get_social_icons(self, social_links: Dict[str, str]) -> str:
         """Generate social media icons HTML"""
         icons_html = ""
@@ -157,6 +186,9 @@ class WebBuilderService:
         
         # Carta section for restaurants
         carta_section = self._get_carta_section(content.menu_pdf_url) if content.is_restaurant_bar else ""
+        
+        # Testimonials section (filtered reviews >= 4 stars)
+        testimonials_section = self._get_testimonials_section(content.testimonials) if content.testimonials else ""
         
         # Get contact info
         contact_info = {
@@ -374,6 +406,53 @@ class WebBuilderService:
             font-size: 1.125rem;
             font-weight: 600;
         }}
+        
+        /* Testimonials */
+        .testimonials-section {
+            padding: 5rem 2rem;
+            background: var(--bg-light);
+        }
+        
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+        
+        .testimonial-card {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+        
+        .testimonial-rating {
+            color: #f59e0b;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        .testimonial-text {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+        
+        .testimonial-author {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .testimonial-date {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
         
         /* Location */
         .location-content {{
@@ -732,6 +811,9 @@ class WebBuilderService:
             {self._get_services_html(content.services)}
         </div>
     </section>
+
+    <!-- TESTIMONIOS -->
+    {testimonials_section}
 
     <!-- DONDE ESTAMOS -->
     <section id="donde-estamos" class="section">

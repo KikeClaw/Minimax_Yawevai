@@ -25,6 +25,7 @@ class GoogleBusinessData(BaseModel):
     hours: Optional[Dict[str, str]] = None
     rating: Optional[float] = None
     reviews_count: Optional[int] = None
+    reviews: List[Dict] = []  # Individual reviews with text and rating
     photos: List[str] = []
     website: Optional[str] = None
     social_links: Dict[str, Optional[str]] = {}
@@ -46,6 +47,7 @@ class GeneratedContent(BaseModel):
     social_links: Dict[str, Optional[str]]
     menu_pdf_url: Optional[str] = None
     is_restaurant_bar: bool = False
+    testimonials: List[Dict] = []  # Filtered testimonials (rating >= 4)
 
 
 class WebFile(BaseModel):
