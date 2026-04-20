@@ -26,6 +26,12 @@ import {
   CheckCircle,
   AlertCircle,
   Zap,
+  Settings,
+  Key,
+  Bot,
+  Sparkles,
+  Save,
+  TestTube,
 } from 'lucide-react';
 
 // Types
@@ -65,6 +71,28 @@ interface Stats {
   prospects_found: number;
   demos_generated: number;
   whatsapp_sent: number;
+}
+
+// AI Settings Types
+interface AIModel {
+  id: string;
+  name: string;
+  description: string;
+  supports_vision: boolean;
+}
+
+interface AIProvider {
+  id: string;
+  name: string;
+  has_api_key: boolean;
+  models: AIModel[];
+}
+
+interface AIConfig {
+  provider: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
 }
 
 // Constants
@@ -113,6 +141,7 @@ const Sidebar = ({ activeSection, setActiveSection }: { activeSection: string; s
     { id: 'prospects', label: 'Prospectos', icon: Users },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
     { id: 'webs', label: 'Webs Creadas', icon: Globe },
+    { id: 'ai-settings', label: 'AI Settings', icon: Sparkles },
   ];
 
   return (
@@ -907,6 +936,338 @@ disabled={processing}
   );
 };
 
+// AI Settings Component
+const AISettingsSection = () => {
+  const [providers, setProviders] = useState<AIProvider[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState('');
+  const [selectedModel, setSelectedModel] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [temperature, setTemperature] = useState(0.7);
+  const [maxTokens, setMaxTokens] = useState(2000);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    fetchProviders();
+  }, []);
+
+  const fetchProviders = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/settings/ai/providers`);
+      const data = await response.json();
+      setProviders(data);
+      
+      // Fetch current config
+      const configRes = await fetch(`${API_BASE_URL}/api/settings/ai`);
+      const config: AIConfig = await configRes.json();
+      setSelectedProvider(config.provider);
+      setSelectedModel(config.model);
+      setTemperature(config.temperature);
+      setMaxTokens(config.max_tokens);
+    } catch (error) {
+      console.error('Failed to fetch AI settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/settings/ai`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          model: selectedModel,
+          api_key: apiKey || undefined,
+          temperature,
+          max_tokens: maxTokens,
+        }),
+      });
+      const data = await response.json();
+      setMessage({ type: 'success', text: 'Configuración guardada correctamente' });
+      setApiKey('');
+      // Refresh providers to update has_api_key status
+      fetchProviders();
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error al guardar la configuración' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/settings/ai/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          model: selectedModel,
+          api_key: apiKey || undefined,
+        }),
+      });
+      const data = await response.json();
+      setTestResult({
+        success: data.success,
+        message: data.success ? `✓ Conexión exitosa: ${data.generated_title}` : `✗ Error: ${data.error}`,
+      });
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: 'Error al probar la conexión',
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const currentProvider = providers.find(p => p.id === selectedProvider);
+  const currentModels = currentProvider?.models || [];
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl shadow-sm p-6 text-white">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-8 h-8" />
+          <div>
+            <h2 className="text-xl font-semibold">Configuración de IA</h2>
+            <p className="text-purple-100 text-sm">Selecciona el proveedor y modelo para generación de contenido</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Provider Selection */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Bot className="w-5 h-5" />
+          Proveedor de IA
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {providers.map((provider) => (
+            <button
+              key={provider.id}
+              onClick={() => {
+                setSelectedProvider(provider.id);
+                setSelectedModel(provider.models[0]?.id || '');
+              }}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                selectedProvider === provider.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold">{provider.name}</span>
+                {provider.has_api_key ? (
+                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Configurado</span>
+                ) : provider.id === 'mock' ? (
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">Gratis</span>
+                ) : (
+                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Sin clave</span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500">
+                {provider.models.length} modelo{provider.models.length !== 1 ? 's' : ''} disponible{provider.models.length !== 1 ? 's' : ''}
+              </p>
+            </button>
+          ))}
+        </div>
+
+        {/* Model Selection */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            {currentModels.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name} - {model.description}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* API Key */}
+        {selectedProvider !== 'mock' && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Key className="w-4 h-4 inline mr-1" />
+              API Key {currentProvider?.has_api_key && <span className="text-green-600 text-xs">(Guardada)</span>}
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={currentProvider?.has_api_key ? 'Nueva clave (dejar vacío para mantener)' : 'Introduce tu API key'}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {selectedProvider === 'openai' && 'Obtén tu clave en: platform.openai.com/api-keys'}
+              {selectedProvider === 'anthropic' && 'Obtén tu clave en: console.anthropic.com/settings/keys'}
+              {selectedProvider === 'google' && 'Obtén tu clave en: aistudio.google.com/apikey'}
+              {selectedProvider === 'minimax' && 'Obtén tu clave en: platform.minimaxi.com'}
+            </p>
+          </div>
+        )}
+
+        {/* Advanced Settings */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Temperatura: {temperature}
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.1"
+              value={temperature}
+              onChange={(e) => setTemperature(parseFloat(e.target.value))}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">Más bajo = más predecible, más alto = más creativo</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Max Tokens: {maxTokens}
+            </label>
+            <input
+              type="range"
+              min="500"
+              max="4000"
+              step="500"
+              value={maxTokens}
+              onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">Longitud máxima de la respuesta</p>
+          </div>
+        </div>
+
+        {/* Message */}
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}>
+            {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            {message.text}
+          </div>
+        )}
+
+        {/* Test Result */}
+        {testResult && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}>
+            {testResult.message}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-4">
+          <button
+            onClick={handleTest}
+            disabled={testing || selectedProvider === 'mock'}
+            className="px-6 py-2 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {testing ? <Loader2 className="w-5 h-5 animate-spin" /> : <TestTube className="w-5 h-5" />}
+            Probar Conexión
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+            Guardar Configuración
+          </button>
+        </div>
+      </div>
+
+      {/* Model Comparison */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold mb-4">Comparativa de Modelos</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Proveedor</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Modelo</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Mejor Para</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Coste</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Calidad</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              <tr className="hover:bg-gray-50">
+                <td className="px-4 py-3"><span className="font-medium">OpenAI</span></td>
+                <td className="px-4 py-3">GPT-4o</td>
+                <td className="px-4 py-3 text-sm text-gray-600">Mejor calidad general, rápido</td>
+                <td className="px-4 py-3"><span className="text-orange-600">$$$</span></td>
+                <td className="px-4 py-3"><span className="text-green-600">★★★★★</span></td>
+              </tr>
+              <tr className="hover:bg-gray-50">
+                <td className="px-4 py-3"><span className="font-medium">Anthropic</span></td>
+                <td className="px-4 py-3">Claude 3.5 Sonnet</td>
+                <td className="px-4 py-3 text-sm text-gray-600">Mejor razonamiento, excelente escritura</td>
+                <td className="px-4 py-3"><span className="text-orange-600">$$</span></td>
+                <td className="px-4 py-3"><span className="text-green-600">★★★★★</span></td>
+              </tr>
+              <tr className="hover:bg-gray-50">
+                <td className="px-4 py-3"><span className="font-medium">Google</span></td>
+                <td className="px-4 py-3">Gemini 1.5 Pro</td>
+                <td className="px-4 py-3 text-sm text-gray-600">Contexto largo, multimodal</td>
+                <td className="px-4 py-3"><span className="text-green-600">$</span></td>
+                <td className="px-4 py-3"><span className="text-green-600">★★★★</span></td>
+              </tr>
+              <tr className="hover:bg-gray-50">
+                <td className="px-4 py-3"><span className="font-medium">MiniMax</span></td>
+                <td className="px-4 py-3">ABAB 6.5S</td>
+                <td className="px-4 py-3 text-sm text-gray-600">Rápido, optimizado chino</td>
+                <td className="px-4 py-3"><span className="text-green-600">$</span></td>
+                <td className="px-4 py-3"><span className="text-yellow-600">★★★</span></td>
+              </tr>
+              <tr className="hover:bg-gray-50">
+                <td className="px-4 py-3"><span className="font-medium">Mock</span></td>
+                <td className="px-4 py-3">Template</td>
+                <td className="px-4 py-3 text-sm text-gray-600">Sin coste, calidad básica</td>
+                <td className="px-4 py-3"><span className="text-green-600">Gratis</span></td>
+                <td className="px-4 py-3"><span className="text-gray-400">★★</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-sm text-gray-500 mt-4">
+          <strong>Recomendación:</strong> Para mejores resultados profesionales, usa <strong>Claude 3.5 Sonnet</strong> (mejor relación calidad/precio) o <strong>GPT-4o</strong> (mejor calidad general).
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // Main Component
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState('stats');
@@ -958,6 +1319,7 @@ export default function Dashboard() {
               {activeSection === 'prospects' && 'Prospectos'}
               {activeSection === 'whatsapp' && 'WhatsApp'}
               {activeSection === 'webs' && 'Webs Creadas'}
+              {activeSection === 'ai-settings' && 'Configuración de IA'}
             </h1>
             <p className="text-gray-500">Panel de administracion de YAWEB.AI</p>
           </div>
@@ -992,6 +1354,10 @@ export default function Dashboard() {
 
         {(activeSection === 'stats' || activeSection === 'webs') && (
           <GeneratedWebs onActivate={handleActivate} />
+        )}
+
+        {activeSection === 'ai-settings' && (
+          <AISettingsSection />
         )}
 
         {activeSection === 'stats' && (

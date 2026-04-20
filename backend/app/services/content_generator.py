@@ -1,9 +1,11 @@
 """
 AI Content Generator Service
 Uses LLM to generate web content from extracted data or context
+Supports: OpenAI, Anthropic, Google Gemini, MiniMax
 """
 import json
 import re
+import os
 from typing import Optional, Dict, Any, List
 from ..models import GoogleBusinessData, GeneratedContent
 from ..config import settings
@@ -238,32 +240,59 @@ def generate_mock_content(google_data: Optional[GoogleBusinessData], context: st
 
 
 class ContentGeneratorService:
-    """Service for generating web content using AI"""
+    """Service for generating web content using AI - Multi-provider support"""
     
     def __init__(self):
         self.provider = settings.llm_provider
+        self.model = settings.llm_model
         self.use_llm = False
         self.client = None
         self._init_llm_client()
     
     def _init_llm_client(self):
         """Initialize LLM client based on provider"""
+        self.use_llm = False
+        self.client = None
+        
         if self.provider == "openai" and settings.openai_api_key:
             try:
                 from openai import AsyncOpenAI
                 self.client = AsyncOpenAI(api_key=settings.openai_api_key)
                 self.use_llm = True
+                logger.info(f"Initialized OpenAI client with model {self.model}")
             except ImportError:
                 logger.warning("OpenAI not installed, using mock generation")
                 self.use_llm = False
+                
         elif self.provider == "anthropic" and settings.anthropic_api_key:
             try:
                 from anthropic import AsyncAnthropic
                 self.client = AsyncAnthropic(api_key=settings.anthropic_api_key)
                 self.use_llm = True
+                logger.info(f"Initialized Anthropic client with model {self.model}")
             except ImportError:
                 logger.warning("Anthropic not installed, using mock generation")
                 self.use_llm = False
+                
+        elif self.provider == "google" and settings.google_api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=settings.google_api_key)
+                self.client = genai
+                self.use_llm = True
+                logger.info(f"Initialized Google Gemini client with model {self.model}")
+            except ImportError:
+                logger.warning("Google GenerativeAI not installed, using mock generation")
+                self.use_llm = False
+            except Exception as e:
+                logger.warning(f"Failed to initialize Google Gemini: {e}")
+                self.use_llm = False
+                
+        elif self.provider == "minimax" and settings.minimax_api_key:
+            self.use_llm = True
+            logger.info(f"Initialized MiniMax client with model {self.model}")
+            # MiniMax uses HTTP requests directly
+            
         else:
             self.use_llm = False
             logger.info("Using mock content generation (no LLM API key configured)")
@@ -289,7 +318,7 @@ class ContentGeneratorService:
         return generate_mock_content(google_data, context, category)
     
     async def _generate_with_llm(self, google_data: Optional[GoogleBusinessData], context: str) -> Optional[GeneratedContent]:
-        """Generate content using LLM API"""
+        """Generate content using LLM API - Supports all providers"""
         
         # Detect category
         category = "negocio local"
@@ -355,22 +384,43 @@ Responde SOLO con este JSON:
   "is_restaurant_bar": true/false
 }}"""
 
+        content = None
+        
         if self.provider == "openai":
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
                 max_tokens=2000
             )
             content = response.choices[0].message.content
+            
         elif self.provider == "anthropic":
             response = await self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model=self.model,
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )
             content = response.content[0].text
+            
+        elif self.provider == "google":
+            # Google Gemini synchronous call
+            try:
+                model = self.client.GenerativeModel(self.model)
+                response = model.generate_content(prompt)
+                content = response.text
+            except Exception as e:
+                logger.error(f"Google Gemini error: {e}")
+                return None
+                
+        elif self.provider == "minimax":
+            # MiniMax API call
+            content = await self._call_minimax(prompt)
+            
         else:
+            return None
+        
+        if not content:
             return None
         
         # Parse JSON response
@@ -383,6 +433,40 @@ Responde SOLO con este JSON:
             return GeneratedContent(**data)
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM response: {e}")
+            return None
+    
+    async def _call_minimax(self, prompt: str) -> Optional[str]:
+        """Call MiniMax API"""
+        try:
+            import aiohttp
+            
+            url = "https://api.minimax.chat/v1/text/chatcompletion_pro"
+            headers = {
+                "Authorization": f"Bearer {settings.minimax_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "max_tokens": 2000
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=data, headers=headers, timeout=60) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        return result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"MiniMax API error: {response.status} - {error_text}")
+                        return None
+        except ImportError:
+            logger.warning("aiohttp not installed, cannot use MiniMax API")
+            return None
+        except Exception as e:
+            logger.error(f"MiniMax API error: {e}")
             return None
 
 

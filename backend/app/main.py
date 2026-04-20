@@ -8,7 +8,7 @@ from pathlib import Path
 import logging
 
 from .config import settings
-from .routers import generate, webs, scraper, prospects, whatsapp
+from .routers import generate, webs, scraper, prospects, whatsapp, settings
 
 # Configure logging
 logging.basicConfig(
@@ -41,6 +41,7 @@ app.include_router(webs.router, prefix="/api")
 app.include_router(scraper.router)  # Already has /api/scraper prefix
 app.include_router(prospects.router)  # Already has /api/prospects prefix
 app.include_router(whatsapp.router)  # Already has /api/whatsapp prefix
+app.include_router(settings.router)  # AI settings endpoints
 
 # Mount static files for previews
 output_dir = Path(settings.output_dir)

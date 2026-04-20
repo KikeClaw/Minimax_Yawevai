@@ -9,10 +9,14 @@ class Settings(BaseSettings):
     debug: bool = True
     api_prefix: str = "/api"
     
-    # LLM Settings
+    # LLM Settings - Multi-provider support
+    llm_provider: str = "mock"  # "openai", "anthropic", "google", "minimax", "mock"
+    llm_model: str = "gpt-4o"  # Default model
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
-    llm_provider: str = "openai"  # "openai", "anthropic", or "mock"
+    google_api_key: Optional[str] = None
+    minimax_api_key: Optional[str] = None
+    minimax_group_id: Optional[str] = None  # Required for Minimax API
     
     # Google Places
     google_places_api_key: Optional[str] = None
