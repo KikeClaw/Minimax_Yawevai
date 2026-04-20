@@ -52,6 +52,55 @@ def get_tone_from_context(context: str) -> str:
     return "profesional y cercano"
 
 
+def _filter_reviews(reviews: List[Dict], min_rating: int = 4) -> List[Dict]:
+    """Filter reviews to only include those with rating >= min_rating"""
+    if not reviews:
+        return []
+    filtered = [r for r in reviews if r.get('rating', 0) >= min_rating]
+    return filtered[:6]  # Max 6 reviews
+
+
+def _smart_truncate(text: str, max_length: int = 200) -> str:
+    """Truncate text at sentence boundaries, not mid-sentence"""
+    if not text or len(text) <= max_length:
+        return text
+    
+    truncated = text[:max_length]
+    # Find the last period or comma as sentence boundary
+    last_period = truncated.rfind('.')
+    last_comma = truncated.rfind(',')
+    last_boundary = max(last_period, last_comma)
+    
+    # Only truncate if we found a good boundary (at least 60% of max_length)
+    if last_boundary > max_length * 0.6:
+        return text[:last_boundary + 1]
+    
+    return truncated + '...'
+
+
+def _format_whatsapp_number(phone: str) -> str:
+    """Format phone number for WhatsApp with Spanish +34 prefix"""
+    if not phone:
+        return phone
+    
+    # Remove spaces, dashes, dots, parentheses
+    clean = re.sub(r'[\s\-\.\(\)]', '', phone)
+    
+    # Spanish mobile numbers (6 or 7 followed by 8 digits)
+    if re.match(r'^[67]\d{8}$', clean):
+        return f'+34{clean}'
+    
+    # Already has 34 but missing +
+    if re.match(r'^34[67]\d{8}$', clean):
+        return f'+{clean}'
+    
+    # International format already (starts with +)
+    if phone.startswith('+'):
+        return phone
+    
+    return phone
+
+
 def generate_mock_content(google_data: Optional[GoogleBusinessData], context: str, category: str = "negocio local") -> GeneratedContent:
     """Generate content using simple rules when no LLM is available"""
     
