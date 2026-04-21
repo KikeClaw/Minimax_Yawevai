@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import logging
 
-from .config import settings
+from .config import settings as app_settings
 from .routers import generate, webs, scraper, prospects, whatsapp, settings
 
 # Configure logging
@@ -29,7 +29,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=app_settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,7 +44,7 @@ app.include_router(whatsapp.router)  # Already has /api/whatsapp prefix
 app.include_router(settings.router)  # AI settings endpoints
 
 # Mount static files for previews
-output_dir = Path(settings.output_dir)
+output_dir = Path(app_settings.output_dir)
 output_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/preview", StaticFiles(directory=str(output_dir)), name="preview")
 

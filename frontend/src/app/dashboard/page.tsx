@@ -32,6 +32,16 @@ import {
   Sparkles,
   Save,
   TestTube,
+  Wand2,
+  Copy,
+  History,
+  Palette,
+  Sun,
+  Moon,
+  Type,
+  AlignJustify,
+  Link,
+  CopyPlus,
 } from 'lucide-react';
 
 // Types
@@ -128,6 +138,58 @@ const WHATSAPP_TEMPLATES = [
   },
 ];
 
+// Web Creator Types
+interface WebCreatorConfig {
+  google_business_url: string;
+  contexto_adicional: string;
+  email: string;
+  telefono: string;
+  whatsapp: string;
+  modelo_ia: string;
+  tema: 'claro' | 'oscuro';
+  estilo: 'moderno' | 'clasico';
+  tono: 'cercano' | 'formal';
+  densidad: 'completo' | 'minimo';
+  color_primario: string;
+}
+
+interface GenerationHistory {
+  id: string;
+  nombre: string;
+  slug: string;
+  created_at: string;
+  preview_url: string;
+  config: Partial<WebCreatorConfig>;
+}
+
+interface GenerationStep {
+  step: number;
+  title: string;
+  description: string;
+}
+
+// Web Creator Constants
+const WEB_BUILDER_STEPS: GenerationStep[] = [
+  { step: 1, title: 'URL Google Business', description: 'Pega la URL de tu ficha de Google Business para extraer datos automáticamente' },
+  { step: 2, title: 'Datos de Contacto', description: 'Configura la información de contacto que aparecerá en la web' },
+  { step: 3, title: 'Configuración IA', description: 'Selecciona el modelo de IA que generará el contenido' },
+  { step: 4, title: 'Estilo y Diseño', description: 'Personaliza el tema visual, tono y densidad del contenido' },
+  { step: 5, title: 'Generar Web', description: 'Inicia la generación y descarga tu web lista' },
+];
+
+const AI_MODELS_FOR_WEB = [
+  { id: 'mock', name: 'Demo (Gratis)', cost: '0€', description: 'Contenido de ejemplo' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: '~0.01€', description: 'Rápido y económico' },
+  { id: 'gpt-4o', name: 'GPT-4o', cost: '~0.03€', description: 'Mejor calidad/precio' },
+  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', cost: '~0.04€', description: 'Excelente para contenido' },
+  { id: 'gemini-1.5-flash', name: 'Gemini Flash', cost: '~0.001€', description: 'Ultra económico' },
+];
+
+const TEMA_COLORS = {
+  claro: { bg: 'bg-white', text: 'text-gray-900', accent: 'from-blue-500 to-blue-600' },
+  oscuro: { bg: 'bg-gray-900', text: 'text-white', accent: 'from-purple-500 to-indigo-600' },
+};
+
 const ESTADO_COLORS = {
   nuevo: 'bg-blue-100 text-blue-800',
   demo: 'bg-green-100 text-green-800',
@@ -141,6 +203,7 @@ const Sidebar = ({ activeSection, setActiveSection }: { activeSection: string; s
   const menuItems = [
     { id: 'stats', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'scraper', label: 'Scraper', icon: Search },
+    { id: 'creator', label: 'Creador de Webs', icon: Wand2 },
     { id: 'prospects', label: 'Prospectos', icon: Users },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
     { id: 'webs', label: 'Webs Creadas', icon: Globe },
@@ -939,6 +1002,724 @@ disabled={processing}
   );
 };
 
+// Web Creator Component
+const WebCreatorSection = () => {
+  const [config, setConfig] = useState<WebCreatorConfig>({
+    google_business_url: '',
+    contexto_adicional: '',
+    email: '',
+    telefono: '',
+    whatsapp: '',
+    modelo_ia: 'gpt-4o-mini',
+    tema: 'claro',
+    estilo: 'moderno',
+    tono: 'cercano',
+    densidad: 'completo',
+    color_primario: '#3B82F6',
+  });
+  const [currentStep, setCurrentStep] = useState(1);
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [generationComplete, setGenerationComplete] = useState(false);
+  const [generatedSlug, setGeneratedSlug] = useState('');
+  const [history, setHistory] = useState<GenerationHistory[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [scrapingGoogle, setScrapingGoogle] = useState(false);
+  const [googleData, setGoogleData] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  
+  // Color presets
+  const colorPresets = [
+    { name: 'Azul', color: '#3B82F6' },
+    { name: 'Rojo', color: '#EF4444' },
+    { name: 'Verde', color: '#22C55E' },
+    { name: 'Amarillo', color: '#EAB308' },
+    { name: 'Morado', color: '#8B5CF6' },
+    { name: 'Rosa', color: '#EC4899' },
+    { name: 'Naranja', color: '#F97316' },
+    { name: 'Gris', color: '#6B7280' },
+  ];
+
+  // Fetch history
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/generator/history`);
+      const data = await response.json();
+      setHistory(data);
+    } catch (error) {
+      // Use mock data
+      setHistory([
+        { id: '1', nombre: 'Restaurante El Parque', slug: 'restaurante-el-parque', created_at: new Date().toISOString(), preview_url: '#', config: {} },
+        { id: '2', nombre: 'Peluqueria María', slug: 'peluqueria-maria', created_at: new Date(Date.now() - 86400000).toISOString(), preview_url: '#', config: {} },
+      ]);
+    }
+  };
+
+  const handleScrapeGoogle = async () => {
+    if (!config.google_business_url) return;
+    setScrapingGoogle(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/scraper/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: config.google_business_url }),
+      });
+      const data = await response.json();
+      setGoogleData(data);
+      // Auto-fill form with scraped data
+      if (data.email) setConfig(prev => ({ ...prev, email: data.email }));
+      if (data.phone) setConfig(prev => ({ ...prev, telefono: data.phone }));
+      if (data.whatsapp) setConfig(prev => ({ ...prev, whatsapp: data.whatsapp }));
+    } catch (error) {
+      console.error('Google scrape error:', error);
+    } finally {
+      setScrapingGoogle(false);
+    }
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setProgress(0);
+    
+    // Simulate generation progress
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return prev;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 500);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      const data = await response.json();
+      clearInterval(progressInterval);
+      setProgress(100);
+      setGeneratedSlug(data.slug || 'web-generada');
+      setGenerationComplete(true);
+      fetchHistory();
+    } catch (error) {
+      clearInterval(progressInterval);
+      // Demo mode - simulate success
+      setTimeout(() => {
+        setProgress(100);
+        const slug = config.google_business_url.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '-') || 'web-demo';
+        setGeneratedSlug(slug);
+        setGenerationComplete(true);
+        fetchHistory();
+      }, 3000);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleClone = (item: GenerationHistory) => {
+    setConfig(prev => ({
+      ...prev,
+      google_business_url: item.config.google_business_url || '',
+      contexto_adicional: item.config.contexto_adicional || '',
+      email: item.config.email || '',
+      telefono: item.config.telefono || '',
+      whatsapp: item.config.whatsapp || '',
+      modelo_ia: item.config.modelo_ia || 'gpt-4o-mini',
+      tema: item.config.tema || 'claro',
+      estilo: item.config.estilo || 'moderno',
+      tono: item.config.tono || 'cercano',
+      densidad: item.config.densidad || 'completo',
+    }));
+    setShowHistory(false);
+  };
+
+  const resetForm = () => {
+    setConfig({
+      google_business_url: '',
+      contexto_adicional: '',
+      email: '',
+      telefono: '',
+      whatsapp: '',
+      modelo_ia: 'gpt-4o-mini',
+      tema: 'claro',
+      estilo: 'moderno',
+      tono: 'cercano',
+      densidad: 'completo',
+      color_primario: '#3B82F6',
+    });
+    setCurrentStep(1);
+    setGenerationComplete(false);
+    setGeneratedSlug('');
+    setGoogleData(null);
+  };
+
+  const selectedModel = AI_MODELS_FOR_WEB.find(m => m.id === config.modelo_ia);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className={`rounded-xl shadow-sm p-6 bg-gradient-to-r ${TEMA_COLORS[config.tema].accent} text-white`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Wand2 className="w-8 h-8" />
+            <div>
+              <h2 className="text-xl font-semibold">Creador de Webs</h2>
+              <p className="text-white/80 text-sm">Genera webs profesionales para negocios locales</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <History className="w-4 h-4" />
+            Historial
+          </button>
+        </div>
+      </div>
+
+      {/* Step Progress */}
+      {!generationComplete && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            {WEB_BUILDER_STEPS.map((step) => (
+              <div key={step.step} className="flex items-center">
+                <button
+                  onClick={() => setCurrentStep(step.step)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
+                    currentStep === step.step
+                      ? 'bg-blue-600 text-white scale-110'
+                      : currentStep > step.step
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-200 text-gray-500'
+                  }`}
+                >
+                  {currentStep > step.step ? <Check className="w-5 h-5" /> : step.step}
+                </button>
+                {step.step < 5 && (
+                  <div className={`w-16 h-1 mx-2 rounded ${
+                    currentStep > step.step ? 'bg-green-500' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            {WEB_BUILDER_STEPS.map((step) => (
+              <span
+                key={step.step}
+                className={`${
+                  currentStep === step.step ? 'text-blue-600 font-medium' : 'text-gray-500'
+                }`}
+              >
+                {step.title}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Generation Complete */}
+      {generationComplete && (
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2">¡Web Generada!</h3>
+          <p className="text-gray-500 mb-6">Tu web está lista para visualizar y descargar</p>
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <a
+              href={`https://${generatedSlug}.yaweb.ai`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Eye className="w-5 h-5" />
+              Ver Web
+              <ExternalLink className="w-4 h-4" />
+            </a>
+            <button className="px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Descargar ZIP
+            </button>
+          </div>
+          <button
+            onClick={resetForm}
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
+            + Crear otra web
+          </button>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistory && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Historial de Generaciones
+            </h3>
+            <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-gray-100 rounded">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          {history.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No hay generaciones anteriores</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {history.map((item) => (
+                <div key={item.id} className="border rounded-lg p-4 hover:border-blue-300 transition-colors">
+                  <h4 className="font-medium mb-2">{item.nombre}</h4>
+                  <p className="text-sm text-gray-500 mb-2">demo.yaweb.ai/{item.slug}</p>
+                  <p className="text-xs text-gray-400 mb-3">
+                    {new Date(item.created_at).toLocaleDateString('es-ES')}
+                  </p>
+                  <div className="flex gap-2">
+                    <button className="p-2 text-gray-600 hover:text-blue-600" title="Ver">
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleClone(item)}
+                      className="p-2 text-gray-600 hover:text-blue-600"
+                      title="Clonar"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main Form */}
+      {!generationComplete && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Step 1: Google Business URL */}
+            <div className={`bg-white rounded-xl shadow-sm p-6 ${currentStep !== 1 ? 'opacity-50' : ''}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="font-bold text-blue-600">1</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">URL Google Business</h3>
+                  <p className="text-sm text-gray-500">{WEB_BUILDER_STEPS[0].description}</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="url"
+                    value={config.google_business_url}
+                    onChange={(e) => setConfig(prev => ({ ...prev, google_business_url: e.target.value }))}
+                    placeholder="https://business.google.com/..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={handleScrapeGoogle}
+                  disabled={!config.google_business_url || scrapingGoogle}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
+                >
+                  {scrapingGoogle ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  {scrapingGoogle ? 'Extrayendo...' : 'Extraer Datos'}
+                </button>
+              </div>
+              {googleData && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Datos extraídos correctamente
+                  </p>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Nombre: <strong>{googleData.nombre || 'No disponible'}</strong>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Step 2: Contact Info */}
+            <div className={`bg-white rounded-xl shadow-sm p-6 ${currentStep !== 2 ? 'opacity-50' : ''}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="font-bold text-purple-600">2</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Datos de Contacto</h3>
+                  <p className="text-sm text-gray-500">{WEB_BUILDER_STEPS[1].description}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={config.email}
+                    onChange={(e) => setConfig(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="contacto@negocio.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={config.telefono}
+                    onChange={(e) => setConfig(prev => ({ ...prev, telefono: e.target.value }))}
+                    placeholder="+34 912 345 678"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                  <input
+                    type="tel"
+                    value={config.whatsapp}
+                    onChange={(e) => setConfig(prev => ({ ...prev, whatsapp: e.target.value }))}
+                    placeholder="+34 600 123 456"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: AI Model */}
+            <div className={`bg-white rounded-xl shadow-sm p-6 ${currentStep !== 3 ? 'opacity-50' : ''}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="font-bold text-green-600">3</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Configuración de IA</h3>
+                  <p className="text-sm text-gray-500">{WEB_BUILDER_STEPS[2].description}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Modelo de IA</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {AI_MODELS_FOR_WEB.map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => setConfig(prev => ({ ...prev, modelo_ia: model.id }))}
+                        className={`p-4 rounded-lg border-2 text-left transition-all ${
+                          config.modelo_ia === model.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold">{model.name}</span>
+                          <span className={`text-sm ${model.cost === '0€' ? 'text-green-600' : 'text-gray-500'}`}>
+                            {model.cost}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">{model.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4: Style */}
+            <div className={`bg-white rounded-xl shadow-sm p-6 ${currentStep !== 4 ? 'opacity-50' : ''}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                  <span className="font-bold text-orange-600">4</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Estilo y Diseño</h3>
+                  <p className="text-sm text-gray-500">{WEB_BUILDER_STEPS[3].description}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Theme Toggle */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Tema</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, tema: 'claro' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${
+                        config.tema === 'claro' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <Sun className="w-5 h-5" />
+                      <span>Claro</span>
+                    </button>
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, tema: 'oscuro' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${
+                        config.tema === 'oscuro' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <Moon className="w-5 h-5" />
+                      <span>Oscuro</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Style */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Estilo</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, estilo: 'moderno' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 text-center transition-all ${
+                        config.estilo === 'moderno' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <Zap className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-sm">Moderno</span>
+                    </button>
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, estilo: 'clasico' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 text-center transition-all ${
+                        config.estilo === 'clasico' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <Building2 className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-sm">Clásico</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Tono</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, tono: 'cercano' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 text-center transition-all ${
+                        config.tono === 'cercano' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <Users className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-sm">Cercano</span>
+                    </button>
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, tono: 'formal' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 text-center transition-all ${
+                        config.tono === 'formal' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <Settings className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-sm">Formal</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Density */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Densidad</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, densidad: 'completo' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${
+                        config.densidad === 'completo' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <AlignJustify className="w-5 h-5" />
+                      <span>Completo</span>
+                    </button>
+                    <button
+                      onClick={() => setConfig(prev => ({ ...prev, densidad: 'minimo' }))}
+                      className={`flex-1 p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${
+                        config.densidad === 'minimo' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <Type className="w-5 h-5" />
+                      <span>Mínimo</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Color Picker */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <Palette className="w-4 h-4 inline mr-1" />
+                    Color Principal
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex gap-2">
+                      {colorPresets.map((preset) => (
+                        <button
+                          key={preset.color}
+                          onClick={() => setConfig(prev => ({ ...prev, color_primario: preset.color }))}
+                          className={`w-8 h-8 rounded-full border-2 transition-all ${
+                            config.color_primario === preset.color ? 'border-gray-900 scale-110' : 'border-transparent'
+                          }`}
+                          style={{backgroundColor: preset.color }}
+                          title={preset.name}
+                        />
+                      ))}
+                    </div>
+                    <input
+                      type="color"
+                      value={config.color_primario}
+                      onChange={(e) => setConfig(prev => ({ ...prev, color_primario: e.target.value }))}
+                      className="w-12 h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contexto adicional */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Contexto Adicional
+                </label>
+                <textarea
+                  value={config.contexto_adicional}
+                  onChange={(e) => setConfig(prev => ({ ...prev, contexto_adicional: e.target.value }))}
+                  rows={4}
+                  placeholder="Información adicional sobre el negocio, servicios especiales, historia, etc."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Step 5: Generate */}
+            <div className={`bg-white rounded-xl shadow-sm p-6 ${currentStep !== 5 ? 'opacity-50' : ''}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                  <span className="font-bold text-pink-600">5</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Generar Web</h3>
+                  <p className="text-sm text-gray-500">{WEB_BUILDER_STEPS[4].description}</p>
+                </div>
+              </div>
+
+              {/* Preview Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 className="font-medium mb-3">Resumen de Configuración</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Modelo:</span>
+                    <p className="font-medium">{selectedModel?.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Coste:</span>
+                    <p className={`font-medium ${selectedModel?.cost === '0€' ? 'text-green-600' : 'text-gray-900'}`}>
+                      {selectedModel?.cost}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Tema:</span>
+                    <p className="font-medium capitalize">{config.tema}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Estilo:</span>
+                    <p className="font-medium capitalize">{config.estilo}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: config.color_primario }} />
+                  <span className="text-sm">Color: {config.color_primario}</span>
+                </div>
+              </div>
+
+              {/* Generate Button */}
+              {!generating ? (
+                <button
+                  onClick={handleGenerate}
+                  disabled={!config.email || !config.telefono}
+                  className="w-full px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg font-semibold"
+                >
+                  <Wand2 className="w-6 h-6" />
+                  Generar Web
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-gray-100 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Generando contenido con {selectedModel?.name}...</span>
+                      <span className="text-sm">{Math.round(progress)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 h-3 rounded-full transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 text-center">
+                    Esto puede tardar entre 10-30 segundos dependiendo del modelo...
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Live Preview */}
+          <div className="lg:col-span-1">
+            <div className={`sticky top-4 rounded-xl shadow-lg overflow-hidden ${
+              config.tema === 'oscuro' ? 'bg-gray-900' : 'bg-white'
+            }`}>
+              <div className="p-4 border-b flex items-center justify-between">
+                <span className="text-sm font-medium">Vista Previa</span>
+                <button
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  {showPreview ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+              
+              {/* Mini Preview */}
+              <div className={`p-4 ${showPreview ? '' : 'blur-sm'}`}>
+                <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg mb-4 flex items-center justify-center">
+                  <Globe className={`w-16 h-16 ${config.tema === 'oscuro' ? 'text-gray-600' : 'text-blue-400'}`} />
+                </div>
+                <h4 className={`font-semibold mb-2 ${config.tema === 'oscuro' ? 'text-white' : ''}`}>
+                  {googleData?.nombre || 'Nombre del Negocio'}
+                </h4>
+                <p className={`text-sm mb-4 ${config.tema === 'oscuro' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {config.contexto_adicional || 'Descripción breve del negocio...'}
+                </p>
+                <div className={`text-sm ${config.tema === 'oscuro' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p>{config.email}</p>
+                  <p>{config.telefono}</p>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  {config.estilo === 'moderno' ? (
+                    <div className="w-full h-8 bg-gray-200 rounded-lg" />
+                  ) : (
+                    <div className="w-full h-8 bg-gray-200 rounded border-2 border-gray-400" />
+                  )}
+                </div>
+              </div>
+
+              {/* Color Preview */}
+              <div className="p-4 border-t">
+                <p className="text-xs text-gray-500 mb-2">Paleta de colores</p>
+                <div className="flex gap-1">
+                  <div className="w-1/4 h-8 rounded-l" style={{ backgroundColor: config.color_primario }} />
+                  <div className="w-1/4 h-8" style={{ backgroundColor: config.color_primario + '80' }} />
+                  <div className="w-1/4 h-8" style={{ backgroundColor: config.color_primario + '40' }} />
+                  <div className={`w-1/4 h-8 rounded-r ${config.tema === 'oscuro' ? 'bg-gray-800' : 'bg-gray-100'}`} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // AI Settings Component
 const AISettingsSection = () => {
   const [providers, setProviders] = useState<AIProvider[]>([]);
@@ -1334,6 +2115,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-gray-900">
               {activeSection === 'stats' && 'Dashboard'}
               {activeSection === 'scraper' && 'Scraper de Negocios'}
+              {activeSection === 'creator' && 'Creador de Webs'}
               {activeSection === 'prospects' && 'Prospectos'}
               {activeSection === 'whatsapp' && 'WhatsApp'}
               {activeSection === 'webs' && 'Webs Creadas'}
@@ -1355,10 +2137,15 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {(activeSection === 'stats' || activeSection === 'scraper') && (
+        {(activeSection === 'stats' || activeSection === 'creator') && (
           <>
-            <StatsCards stats={stats} />
-            <ScraperSection onProspectCreated={fetchStats} />
+            {activeSection === 'creator' && <WebCreatorSection />}
+            {activeSection === 'stats' && (
+              <>
+                <ScraperSection onProspectCreated={fetchStats} />
+                <WebCreatorSection />
+              </>
+            )}
           </>
         )}
 

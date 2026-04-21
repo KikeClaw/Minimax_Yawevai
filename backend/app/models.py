@@ -15,6 +15,14 @@ class GenerationRequest(BaseModel):
     context: str = Field(..., min_length=1, description="Contexto adicional para la IA")
     plan: PlanType = PlanType.BASIC
     theme: Optional[str] = Field("light", description="Theme: 'light' or 'dark'")
+    # Extended fields for web creator
+    email: Optional[str] = Field(None, description="Email de contacto")
+    telefono: Optional[str] = Field(None, description="Teléfono de contacto")
+    whatsapp: Optional[str] = Field(None, description="WhatsApp")
+    estilo: Optional[str] = Field("moderno", description="Estilo: 'moderno' o 'clasico'")
+    tono: Optional[str] = Field("cercano", description="Tono: 'cercano' o 'formal'")
+    densidad: Optional[str] = Field("completo", description="Densidad: 'completo' o 'minimo'")
+    color_primario: Optional[str] = Field("#3B82F6", description="Color principal en hex")
 
 
 class GoogleBusinessData(BaseModel):

@@ -98,3 +98,28 @@ async def delete_web(web_id: str):
         del generated_webs[web_id]
         return {"success": True, "message": f"Web {web_id} deleted"}
     raise HTTPException(status_code=404, detail="Web not found")
+
+
+@router.get("/history", response_model=list)
+async def get_generation_history():
+    """Get history of generated webs for the web creator"""
+    history = []
+    for web_id, web in generated_webs.items():
+        # Build slug from name
+        slug = web.name.lower().replace(' ', '-') if web.name else web_id
+        history.append({
+            "id": web_id,
+            "nombre": web.name,
+            "slug": slug,
+            "created_at": web.created_at.isoformat(),
+            "preview_url": web.preview_url,
+            "config": {
+                "google_business_url": web.google_url or "",
+                "contexto_adicional": web.context or "",
+                "email": web.extracted_data.email if web.extracted_data else "",
+                "telefono": web.extracted_data.phone if web.extracted_data else "",
+            }
+        })
+    # Sort by created_at descending
+    history.sort(key=lambda x: x["created_at"], reverse=True)
+    return history[:20]  # Return last 20 generations
