@@ -1022,11 +1022,161 @@ const WebCreatorSection = () => {
   const [progress, setProgress] = useState(0);
   const [generationComplete, setGenerationComplete] = useState(false);
   const [generatedSlug, setGeneratedSlug] = useState('');
+  const [generatedHTML, setGeneratedHTML] = useState('');
   const [history, setHistory] = useState<GenerationHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [scrapingGoogle, setScrapingGoogle] = useState(false);
   const [googleData, setGoogleData] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
+  
+  // Generate demo HTML based on config
+  const generateDemoHTML = () => {
+    const nombreNegocio = googleData?.nombre || 'Tu Negocio';
+    const direccion = googleData?.address || config.contexto_adicional?.split('\n')[1] || 'Tu Dirección';
+    const rating = googleData?.rating || 4.5;
+    const reviews = googleData?.reviews_count || 50;
+    const isDark = config.tema === 'oscuro';
+    const isClassic = config.estilo === 'clasico';
+    const isFormal = config.tono === 'formal';
+    const isFullDensity = config.densidad === 'completo';
+    const primaryColor = config.color_primario;
+    const bgColor = isDark ? '#1a1a2e' : '#ffffff';
+    const textColor = isDark ? '#eaeaea' : '#1f2937';
+    const subtextColor = isDark ? '#9ca3af' : '#6b7280';
+    
+    const greeting = isFormal ? 'Bienvenido a' : 'Descubre';
+    const ctaText = isFormal ? 'Contáctenos' : 'Escríbenos';
+    const serviceTitle = isFormal ? 'Nuestros Servicios' : 'Lo que hacemos';
+    const aboutTitle = isFormal ? 'Sobre Nosotros' : 'Quiénes somos';
+    
+    const services = isFullDensity ? [
+      'Servicio de calidad premium',
+      'Atención personalizada',
+      'Más de 10 años de experiencia',
+      'Compromiso con la excelencia'
+    ] : [
+      'Servicio de calidad',
+      'Atención personalizada'
+    ];
+
+    const testimonios = isFullDensity ? [
+      { nombre: 'María García', texto: 'Excelente servicio, muy profesionales y atentos.', estrellas: 5 },
+      { nombre: 'Carlos Rodríguez', texto: 'Muy recomendable, superó mis expectativas.', estrellas: 5 },
+      { nombre: 'Ana Martínez', texto: 'Gran experiencia, volveré sin duda.', estrellas: 4 },
+    ] : [
+      { nombre: 'María García', texto: 'Excelente servicio, muy profesionales.', estrellas: 5 },
+    ];
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${nombreNegocio} - ${direccion}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: ${bgColor}; color: ${textColor}; line-height: 1.6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    header { background: ${primaryColor}; color: white; padding: 60px 0; text-align: center; }
+    header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+    header p { font-size: 1.2rem; opacity: 0.9; }
+    .rating { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; }
+    .stars { color: #fbbf24; }
+    nav { background: ${isDark ? '#0f0f1a' : '#f9fafb'}; padding: 15px 0; position: sticky; top: 0; }
+    nav .container { display: flex; justify-content: center; gap: 30px; }
+    nav a { color: ${textColor}; text-decoration: none; font-weight: 500; }
+    .hero { padding: 80px 0; text-align: center; }
+    .hero h2 { font-size: 2rem; margin-bottom: 20px; color: ${primaryColor}; }
+    .hero p { max-width: 600px; margin: 0 auto 30px; color: ${subtextColor}; }
+    .btn { display: inline-block; background: ${primaryColor}; color: white; padding: 15px 40px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+    .services { background: ${isDark ? '#16162a' : '#f3f4f6'}; padding: 80px 0; }
+    .services h2 { text-align: center; margin-bottom: 40px; font-size: 2rem; }
+    .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; }
+    .service-card { background: ${bgColor}; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .service-icon { font-size: 2rem; margin-bottom: 15px; }
+    .testimonials { padding: 80px 0; }
+    .testimonials h2 { text-align: center; margin-bottom: 40px; font-size: 2rem; }
+    .testimonial-card { background: ${isDark ? '#16162a' : '#f9fafb'}; padding: 25px; border-radius: 12px; margin-bottom: 20px; }
+    .testimonial-author { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
+    .contact { background: ${primaryColor}; color: white; padding: 80px 0; text-align: center; }
+    .contact h2 { margin-bottom: 30px; }
+    .contact-info { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; margin-top: 30px; }
+    .contact-item { display: flex; align-items: center; gap: 10px; }
+    footer { background: ${isDark ? '#0a0a14' : '#1f2937'}; color: white; padding: 30px 0; text-align: center; }
+    @media (max-width: 768px) {
+      header h1 { font-size: 1.8rem; }
+      nav .container { flex-wrap: wrap; gap: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>${nombreNegocio}</h1>
+      <p>${direccion}</p>
+      <div class="rating">
+        <span class="stars">${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}</span>
+        <span>${rating} (${reviews} reseñas)</span>
+      </div>
+    </div>
+  </header>
+  <nav>
+    <div class="container">
+      <a href="#inicio">Inicio</a>
+      <a href="#servicios">Servicios</a>
+      <a href="#testimonios">Testimonios</a>
+      <a href="#contacto">Contacto</a>
+    </div>
+  </nav>
+  <section class="hero" id="inicio">
+    <div class="container">
+      <h2>${greeting} ${nombreNegocio}</h2>
+      <p>${direccion}. ${config.contexto_adicional?.split('\n')[0] || 'Tu descripción del negocio aquí.'}</p>
+      <a href="#contacto" class="btn">${ctaText}</a>
+    </div>
+  </section>
+  <section class="services" id="servicios">
+    <div class="container">
+      <h2>${serviceTitle}</h2>
+      <div class="services-grid">
+        ${services.map(s => `<div class="service-card"><div class="service-icon">✓</div><p>${s}</p></div>`).join('')}
+      </div>
+    </div>
+  </section>
+  <section class="testimonials" id="testimonios">
+    <div class="container">
+      <h2>Lo que dicen nuestros clientes</h2>
+      ${testimonios.map(t => `
+        <div class="testimonial-card">
+          <div class="stars">${'★'.repeat(t.estrellas)}</div>
+          <p>"${t.texto}"</p>
+          <div class="testimonial-author">
+            <strong>${t.nombre}</strong>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  </section>
+  <section class="contact" id="contacto">
+    <div class="container">
+      <h2>Contacto</h2>
+      <p>¿Tienes preguntas? Estamos aquí para ayudarte.</p>
+      <div class="contact-info">
+        ${config.email ? `<div class="contact-item"><span>✉</span><span>${config.email}</span></div>` : ''}
+        ${config.telefono ? `<div class="contact-item"><span>☎</span><span>${config.telefono}</span></div>` : ''}
+        ${config.whatsapp ? `<div class="contact-item"><span>💬</span><span>${config.whatsapp}</span></div>` : ''}
+      </div>
+    </div>
+  </section>
+  <footer>
+    <div class="container">
+      <p>© 2025 ${nombreNegocio}. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+</body>
+</html>`;
+  };
   
   // Color presets
   const colorPresets = [
@@ -1131,18 +1281,24 @@ const WebCreatorSection = () => {
       clearInterval(progressInterval);
       setProgress(100);
       setGeneratedSlug(data.slug || 'web-generada');
+      // Generate demo HTML
+      const demoHTML = generateDemoHTML();
+      setGeneratedHTML(demoHTML);
       setGenerationComplete(true);
       fetchHistory();
     } catch (error) {
       clearInterval(progressInterval);
-      // Demo mode - simulate success
+      // Demo mode - generate HTML locally
       setTimeout(() => {
         setProgress(100);
-        const slug = config.google_business_url.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '-') || 'web-demo';
+        const slug = config.google_business_url.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '-') || googleData?.nombre?.toLowerCase().replace(/\s+/g, '-') || 'web-demo';
         setGeneratedSlug(slug);
+        // Generate demo HTML
+        const demoHTML = generateDemoHTML();
+        setGeneratedHTML(demoHTML);
         setGenerationComplete(true);
         fetchHistory();
-      }, 3000);
+      }, 2000);
     } finally {
       setGenerating(false);
     }
@@ -1182,6 +1338,7 @@ const WebCreatorSection = () => {
     setCurrentStep(1);
     setGenerationComplete(false);
     setGeneratedSlug('');
+    setGeneratedHTML('');
     setGoogleData(null);
   };
 
@@ -1252,34 +1409,72 @@ const WebCreatorSection = () => {
 
       {/* Generation Complete */}
       {generationComplete && (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-10 h-10 text-green-600" />
-          </div>
-          <h3 className="text-2xl font-bold mb-2">¡Web Generada!</h3>
-          <p className="text-gray-500 mb-6">Tu web está lista para visualizar y descargar</p>
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <a
-              href={`https://${generatedSlug}.yaweb.ai`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm p-8">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-10 h-10 text-green-600" />
+            </div>
+            <h3 className="text-2xl font-bold mb-2 text-center">¡Web Generada!</h3>
+            <p className="text-gray-500 mb-6 text-center">
+              {googleData?.nombre || 'Tu web'} está lista para visualizar
+            </p>
+            <div className="flex items-center justify-center gap-4 mb-6 flex-wrap">
+              <button
+                onClick={() => {
+                  // Create blob and download
+                  const blob = new Blob([generatedHTML], { type: 'text/html' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${generatedSlug}.html`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Descargar HTML
+              </button>
+              <button
+                onClick={() => {
+                  // Open in new tab
+                  const newWindow = window.open('', '_blank');
+                  if (newWindow) {
+                    newWindow.document.write(generatedHTML);
+                    newWindow.document.close();
+                  }
+                }}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Eye className="w-5 h-5" />
+                Ver en Nueva Pestaña
+              </button>
+            </div>
+            <button
+              onClick={resetForm}
+              className="block w-full text-blue-600 hover:text-blue-700 font-medium text-center"
             >
-              <Eye className="w-5 h-5" />
-              Ver Web
-              <ExternalLink className="w-4 h-4" />
-            </a>
-            <button className="px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-2">
-              <Download className="w-5 h-5" />
-              Descargar ZIP
+              + Crear otra web
             </button>
           </div>
-          <button
-            onClick={resetForm}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            + Crear otra web
-          </button>
+          
+          {/* Preview iframe */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
+              <h4 className="font-semibold">Vista Previa</h4>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              </div>
+            </div>
+            <iframe
+              srcDoc={generatedHTML}
+              className="w-full h-[600px] border-0"
+              title="Web Preview"
+              sandbox="allow-scripts allow-same-origin"
+            />
+          </div>
         </div>
       )}
 
